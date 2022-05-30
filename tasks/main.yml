@@ -33,8 +33,22 @@
       --agree-tos
       -m {{ elan_certbot_letsencrypt_email }}
       certonly
-      --domains {{ certbot_domains | join(",") }}
+      --domains {{ elan_certbot_domains | join(",") }}
     creates: /etc/letsencrypt/live/{{ inventory_hostname }}/fullchain.pem
+
+- name: expand existing certificate
+  shell:
+    cmd: >
+      certbot -n
+      -a webroot
+      --webroot-path /var/lib/nginx/
+      --agree-tos
+      -m {{ elan_certbot_letsencrypt_email }}
+      certonly
+      --domains {{ elan_certbot_domains | join(",") }}
+      --expand
+  when: elan_certbot_expand_existing
+  notify: reload nginx
 
 - name: symlink certificates
   file:
