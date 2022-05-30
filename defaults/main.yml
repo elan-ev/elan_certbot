@@ -1,0 +1,4 @@
+---
+
+elan_certbot_domains: ['{{ inventory_hostname }}']
+elan_certbot_expand_existing: false
