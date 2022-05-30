@@ -3,5 +3,5 @@ Description=Certbot Renew
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/certbot -a webroot --webroot-path /var/lib/nginx/ --agree-tos -m {{ elan_certbot_letsencrypt_email }} -n certonly --domains {{ inventory_hostname }}
+ExecStart=/usr/bin/certbot renew -n
 ExecStopPost=-/bin/systemctl reload nginx.service

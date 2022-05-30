@@ -33,7 +33,7 @@
       --agree-tos
       -m {{ elan_certbot_letsencrypt_email }}
       certonly
-      --domains {{ inventory_hostname }}
+      --domains {{ certbot_domains | join(",") }}
     creates: /etc/letsencrypt/live/{{ inventory_hostname }}/fullchain.pem
 
 - name: symlink certificates
