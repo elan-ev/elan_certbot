@@ -1,31 +1,38 @@
 ---
+- name: Install certbot on RedHat
+  when: ansible_os_family == "RedHat"
+  block:
+    - name: Install epel repo
+      ansible.builtin.dnf:
+        name: epel-release
+    - name: Install coturn
+      ansible.builtin.dnf:
+        name: certbot
+        enablerepo: epel
 
-- name: activate epel repository
-  dnf:
-    name: epel-release
-
-- name: install certbot
-  dnf:
+- name: Install certbot on Debian
+  when: ansible_os_family == "Debian"
+  ansible.builtin.apt:
     name: certbot
 
-- name: install certbot services
-  template:
-    src: '{{ item }}'
-    dest: /etc/systemd/system/{{ item }}
-    mode: '0644'
+- name: Install certbot services
+  notify: Restart certbot
+  ansible.builtin.template:
+    src: "{{ item }}"
+    dest: "/etc/systemd/system/{{ item }}"
+    mode: "0644"
   loop:
     - certbot-renew.service
     - certbot-renew.timer
-  notify: restart certbot
 
-- name: start certbot service
-  service:
+- name: Start certbot service
+  ansible.builtin.systemd:
     name: certbot-renew.timer
     state: started
     enabled: true
 
-- name: generate initial certificate
-  shell:
+- name: Generate initial certificate
+  ansible.builtin.shell:
     cmd: >
       certbot -n
       -a webroot
@@ -36,8 +43,10 @@
       --domains {{ elan_certbot_domains | join(",") }}
     creates: /etc/letsencrypt/live/{{ inventory_hostname }}/fullchain.pem
 
-- name: expand existing certificate
-  shell:
+- name: Expand existing certificate
+  when: elan_certbot_expand_existing
+  notify: Reload nginx
+  ansible.builtin.shell:
     cmd: >
       certbot -n
       -a webroot
@@ -47,18 +56,16 @@
       certonly
       --domains {{ elan_certbot_domains | join(",") }}
       --expand
-  when: elan_certbot_expand_existing
-  notify: reload nginx
 
-- name: symlink certificates
-  file:
+- name: Symlink certificates
+  notify: Reload nginx
+  ansible.builtin.file:
     src: /etc/letsencrypt/live/{{ item.src }}
     dest: /etc/nginx/ssl/{{ item.dest }}
     state: link
     force: true
   loop:
-    - src: '{{ inventory_hostname }}/fullchain.pem'
-      dest: '{{ inventory_hostname }}.crt'
-    - src: '{{ inventory_hostname }}/privkey.pem'
-      dest: '{{ inventory_hostname }}.key'
-  notify: reload nginx
+    - src: "{{ inventory_hostname }}/fullchain.pem"
+      dest: "{{ inventory_hostname }}.crt"
+    - src: "{{ inventory_hostname }}/privkey.pem"
+      dest: "{{ inventory_hostname }}.key"
