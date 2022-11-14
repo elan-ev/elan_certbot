@@ -5,7 +5,7 @@
     - name: Install epel repo
       ansible.builtin.dnf:
         name: epel-release
-    - name: Install coturn
+    - name: Install certbot
       ansible.builtin.dnf:
         name: certbot
         enablerepo: epel
