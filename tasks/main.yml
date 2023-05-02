@@ -41,7 +41,8 @@
       -m {{ elan_certbot_letsencrypt_email }}
       certonly
       --domains {{ elan_certbot_domains | join(",") }}
-    creates: /etc/letsencrypt/live/{{ inventory_hostname }}/fullchain.pem
+      --cert-name elan-certbot-certificate
+    creates: /etc/letsencrypt/live/elan-certbot-certificate/fullchain.pem
 
 - name: Expand existing certificate
   when: elan_certbot_expand_existing
@@ -56,16 +57,17 @@
       certonly
       --domains {{ elan_certbot_domains | join(",") }}
       --expand
+      --cert-name elan-certbot-certificate
 
 - name: Symlink certificates
   notify: Reload nginx
   ansible.builtin.file:
-    src: /etc/letsencrypt/live/{{ item.src }}
-    dest: /etc/nginx/ssl/{{ item.dest }}
+    src: "/etc/letsencrypt/live/elan-certbot-certificate/{{ item.src }}"
+    dest: "/etc/nginx/tls/{{ item.dest }}"
     state: link
     force: true
   loop:
-    - src: "{{ inventory_hostname }}/fullchain.pem"
-      dest: "{{ inventory_hostname }}.crt"
-    - src: "{{ inventory_hostname }}/privkey.pem"
-      dest: "{{ inventory_hostname }}.key"
+    - src: "fullchain.pem"
+      dest: "certificate.crt"
+    - src: "privkey.pem"
+      dest: "certificate.key"
