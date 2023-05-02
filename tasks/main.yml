@@ -44,7 +44,7 @@
       --cert-name elan-certbot-certificate
     creates: /etc/letsencrypt/live/elan-certbot-certificate/fullchain.pem
 
-- name: Expand existing certificate
+- name: Expand existing certificate  # noqa: no-changed-when
   when: elan_certbot_expand_existing
   notify: Reload nginx
   ansible.builtin.shell:
