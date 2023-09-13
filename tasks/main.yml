@@ -31,33 +31,71 @@
     state: started
     enabled: true
 
-- name: Generate initial certificate
-  ansible.builtin.shell:
-    cmd: >
-      certbot -n
-      -a webroot
-      --webroot-path /var/lib/nginx/
-      --agree-tos
-      -m {{ elan_certbot_letsencrypt_email }}
-      certonly
-      --domains {{ elan_certbot_domains | join(",") }}
-      --cert-name elan-certbot-certificate
-    creates: /etc/letsencrypt/live/elan-certbot-certificate/fullchain.pem
+- name: Use letsencrypt
+  when: elan_certbot_ca == "letsencrypt"
+  block:
+    - name: Generate initial certificate
+      ansible.builtin.shell:
+        cmd: >
+          certbot certonly
+          --non-interactive
+          --authenticator webroot
+          --webroot-path /var/lib/nginx/
+          --agree-tos
+          --email {{ elan_certbot_letsencrypt_email }}
+          --domains {{ elan_certbot_domains | join(",") }}
+          --cert-name elan-certbot-certificate
+        creates: /etc/letsencrypt/live/elan-certbot-certificate/fullchain.pem
+      no_log: true
+    - name: Expand existing certificate  # noqa: no-changed-when
+      when: elan_certbot_expand_existing
+      notify: Reload nginx
+      ansible.builtin.shell:
+        cmd: >
+          certbot certonly
+          --non-interactive
+          --authenticator webroot
+          --webroot-path /var/lib/nginx/
+          --agree-tos
+          --email {{ elan_certbot_letsencrypt_email }}
+          --domains {{ elan_certbot_domains | join(",") }}
+          --expand
+          --cert-name elan-certbot-certificate
+      no_log: true
 
-- name: Expand existing certificate  # noqa: no-changed-when
-  when: elan_certbot_expand_existing
-  notify: Reload nginx
-  ansible.builtin.shell:
-    cmd: >
-      certbot -n
-      -a webroot
-      --webroot-path /var/lib/nginx/
-      --agree-tos
-      -m {{ elan_certbot_letsencrypt_email }}
-      certonly
-      --domains {{ elan_certbot_domains | join(",") }}
-      --expand
-      --cert-name elan-certbot-certificate
+- name: Use sectigo
+  when: elan_certbot_ca == "sectigo"
+  block:
+    - name: Generate initial certificate
+      ansible.builtin.shell:
+        cmd: >
+          certbot certonly
+          --standalone
+          --non-interactive
+          --agree-tos
+          --email {{ elan_certbot_letsencrypt_email }}
+          --server https://acme.sectigo.com/v2/OV
+          --eab-kid {{ elan_certbot_eab_kid }}
+          --eab-hmac-key {{ elan_certbot_eab_hmac }}
+          --domains {{ elan_certbot_domains | join(",") }}
+          --cert-name elan-certbot-certificate
+        creates: /etc/letsencrypt/live/elan-certbot-certificate/fullchain.pem
+    - name: Expand existing certificate  # noqa: no-changed-when
+      when: elan_certbot_expand_existing
+      notify: Reload nginx
+      ansible.builtin.shell:
+        cmd: >
+          certbot  certonly
+          --standalone
+          --non-interactive
+          --agree-tos
+          --email {{ elan_certbot_letsencrypt_email }}
+          --server https://acme.sectigo.com/v2/OV
+          --eab-kid {{ elan_certbot_eab_kid }}
+          --eab-hmac-key {{ elan_certbot_eab_hmac }}
+          --domains {{ elan_certbot_domains | join(",") }}
+          --expand
+          --cert-name elan-certbot-certificate
 
 - name: Symlink certificates
   notify: Reload nginx
